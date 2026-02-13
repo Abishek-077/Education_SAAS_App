@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+  TEACHER
+  ACCOUNTANT
+  VIEWER
+  STUDENT
+  PARENT
+}
+
+enum Plan {
+  BASIC
+  STANDARD
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIAL
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  KHALTI
+  ESEWA
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  ADMITTED
+  LOST
+}
+
+model Institution {
+  id                      String               @id @default(cuid())
+  name                    String
+  slug                    String               @unique
+  address                 String?
+  phone                   String?
+  email                   String?
+  logoUrl                 String?
+  timezone                String               @default("Asia/Kathmandu")
+  attendanceAlertThreshold Int                 @default(75)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  users                   User[]
+  students                Student[]
+  teachers                Teacher[]
+  classes                 Class[]
+  sections                Section[]
+  subjects                Subject[]
+  admissionsLeads         AdmissionsLead[]
+  knowledgeDocuments      KnowledgeDocument[]
+  feeStructures           FeeStructure[]
+  invoices                Invoice[]
+  payments                Payment[]
+  attendanceSessions      AttendanceSession[]
+  attendanceRecords       AttendanceRecord[]
+  messageTemplates        MessageTemplate[]
+  notifications           Notification[]
+  subscriptions           Subscription[]
+  auditLogs               AuditLog[]
+  analyticsEvents         AnalyticsEvent[]
+}
+
+model User {
+  id             String      @id @default(cuid())
+  name           String?
+  email          String      @unique
+  passwordHash   String?
+  emailVerified  DateTime?
+  image          String?
+  role           Role        @default(VIEWER)
+  institutionId  String?
+  institution    Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  teacherProfile Teacher?
+  auditLogs      AuditLog[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([institutionId, role])
+}
+
+model Student {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime?
+  gender        String?
+  address       String?
+  guardianName  String
+  guardianPhone String
+  guardianEmail String?
+  admissionNo   String
+  classId       String?
+  class         Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
+  sectionId     String?
+  section       Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  documents     StudentDocument[]
+  attendance    AttendanceRecord[]
+  invoices      Invoice[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([institutionId, admissionNo])
+  @@index([institutionId, classId, sectionId])
+  @@unique([institutionId, id])
+}
+
+model StudentDocument {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name        String
+  fileUrl     String
+  contentType String?
+  uploadedAt  DateTime @default(now())
+}
+
+model Teacher {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  userId        String?     @unique
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName     String
+  lastName      String
+  phone         String?
+  email         String?
+  subjects      Subject[]
+  classes       ClassTeacher[]
+  attendanceSessions AttendanceSession[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([institutionId])
+  @@unique([institutionId, id])
+}
+
+model Class {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  level         String?
+  sections      Section[]
+  students      Student[]
+  subjects      Subject[]
+  classTeachers ClassTeacher[]
+  attendanceSessions AttendanceSession[]
+
+  @@unique([institutionId, name])
+  @@unique([institutionId, id])
+}
+
+model Section {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classId       String
+  class         Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  name          String
+  students      Student[]
+  attendanceSessions AttendanceSession[]
+
+  @@unique([institutionId, classId, name])
+  @@unique([institutionId, id])
+}
+
+model Subject {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classId       String?
+  class         Class?      @relation(fields: [classId], references: [id], onDelete: SetNull)
+  teacherId     String?
+  teacher       Teacher?    @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  name          String
+  code          String?
+
+  @@unique([institutionId, name])
+  @@unique([institutionId, id])
+}
+
+model ClassTeacher {
+  classId   String
+  teacherId String
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@id([classId, teacherId])
+}
+
+model AdmissionsLead {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentName   String
+  phone         String
+  gradeInterested String
+  address       String?
+  notes         String?
+  source        String      @default("web")
+  status        LeadStatus  @default(NEW)
+  handoffRequired Boolean   @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([institutionId, status, createdAt])
+  @@unique([institutionId, id])
+}
+
+model KnowledgeDocument {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  title         String
+  fileUrl       String
+  extractedText String
+  createdAt     DateTime    @default(now())
+  @@unique([institutionId, id])
+}
+
+model FeeStructure {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classId       String?
+  class         Class?      @relation(fields: [classId], references: [id], onDelete: SetNull)
+  name          String
+  amount        Decimal     @db.Decimal(10, 2)
+  frequency     String      // one-time, monthly, term
+  createdAt     DateTime    @default(now())
+  @@unique([institutionId, id])
+}
+
+model Invoice {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  invoiceNo     String
+  status        InvoiceStatus @default(ISSUED)
+  issueDate     DateTime
+  dueDate       DateTime
+  subtotal      Decimal     @db.Decimal(10, 2)
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
+  total         Decimal     @db.Decimal(10, 2)
+  paidAmount    Decimal     @default(0) @db.Decimal(10, 2)
+  balanceAmount Decimal     @db.Decimal(10, 2)
+  payments      Payment[]
+  createdAt     DateTime    @default(now())
+
+  @@unique([institutionId, invoiceNo])
+  @@index([institutionId, status, dueDate])
+  @@unique([institutionId, id])
+}
+
+model Payment {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  invoiceId     String
+  invoice       Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount        Decimal     @db.Decimal(10, 2)
+  method        PaymentMethod
+  reference     String?
+  paidAt        DateTime    @default(now())
+  createdById   String?
+  createdBy     User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([institutionId, paidAt])
+  @@unique([institutionId, id])
+}
+
+model AttendanceSession {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classId       String
+  class         Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sectionId     String?
+  section       Section?    @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  teacherId     String?
+  teacher       Teacher?    @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  date          DateTime
+  records       AttendanceRecord[]
+
+  @@unique([institutionId, classId, sectionId, date])
+  @@unique([institutionId, id])
+}
+
+model AttendanceRecord {
+  id            String          @id @default(cuid())
+  institutionId String
+  institution   Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  sessionId     String
+  session       AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status        AttendanceStatus
+  note          String?
+
+  @@unique([sessionId, studentId])
+  @@index([institutionId, studentId])
+  @@unique([institutionId, id])
+}
+
+model MessageTemplate {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  channel       String // sms, whatsapp
+  name          String
+  body          String
+  createdAt     DateTime    @default(now())
+
+  @@unique([institutionId, channel, name])
+  @@unique([institutionId, id])
+}
+
+model Notification {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  channel       String
+  to            String
+  templateName  String?
+  body          String
+  status        String
+  providerRef   String?
+  sentAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId, channel, status])
+  @@unique([institutionId, id])
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  institutionId String
+  institution   Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  plan          Plan               @default(BASIC)
+  status        SubscriptionStatus @default(TRIAL)
+  provider      String             @default("khalti")
+  providerSubscriptionId String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd DateTime?
+  trialEndsAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([institutionId, status])
+  @@unique([institutionId, id])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  actorId       String?
+  actor         User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action        String
+  targetType    String?
+  targetId      String?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId, action, createdAt])
+  @@unique([institutionId, id])
+}
+
+model AnalyticsEvent {
+  id            String      @id @default(cuid())
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  actorId       String?
+  actor         User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  eventName     String
+  payload       Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId, eventName, createdAt])
+  @@unique([institutionId, id])
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
