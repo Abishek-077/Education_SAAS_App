@@ -6,7 +6,7 @@ Production-focused multi-tenant School/Institute Management platform for Nepal.
 This commit implements:
 - Prisma schema for all MVP modules (SIS, attendance, fees, admissions, messaging, subscriptions, audit).
 - Auth.js setup (Credentials + Google OAuth) with Prisma adapter.
-- Multi-tenant request middleware and Prisma tenant query extension foundation.
+- Multi-tenant request middleware and Prisma tenant query extension foundation with safe unique-id tenant rewriting.
 - Seed data for 2 institutions to validate isolation assumptions.
 - Minimal unit tests for RBAC and tenant filter behavior.
 
@@ -57,7 +57,7 @@ Password for both: `Password@123`
 
 ## Tenant isolation approach (MVP foundation)
 - `middleware.ts` requires auth for protected modules and injects `x-institution-id`, `x-user-id`, `x-user-role` headers.
-- `withTenant(prisma, institutionId, role)` applies institution filters to all tenant-scoped models at Prisma query layer.
+- `withTenant(prisma, institutionId, role)` applies institution filters to tenant-scoped models at Prisma query layer, including id-based unique operations via `institutionId_id` composite keys.
 - Super Admin bypasses tenant filter.
 
 ## Tests

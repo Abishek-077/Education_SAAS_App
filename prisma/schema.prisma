@@ -144,6 +144,7 @@ model Student {
 
   @@unique([institutionId, admissionNo])
   @@index([institutionId, classId, sectionId])
+  @@unique([institutionId, id])
 }
 
 model StudentDocument {
@@ -173,6 +174,7 @@ model Teacher {
   updatedAt     DateTime    @updatedAt
 
   @@index([institutionId])
+  @@unique([institutionId, id])
 }
 
 model Class {
@@ -188,6 +190,7 @@ model Class {
   attendanceSessions AttendanceSession[]
 
   @@unique([institutionId, name])
+  @@unique([institutionId, id])
 }
 
 model Section {
@@ -201,6 +204,7 @@ model Section {
   attendanceSessions AttendanceSession[]
 
   @@unique([institutionId, classId, name])
+  @@unique([institutionId, id])
 }
 
 model Subject {
@@ -215,6 +219,7 @@ model Subject {
   code          String?
 
   @@unique([institutionId, name])
+  @@unique([institutionId, id])
 }
 
 model ClassTeacher {
@@ -242,6 +247,7 @@ model AdmissionsLead {
   updatedAt     DateTime    @updatedAt
 
   @@index([institutionId, status, createdAt])
+  @@unique([institutionId, id])
 }
 
 model KnowledgeDocument {
@@ -252,6 +258,7 @@ model KnowledgeDocument {
   fileUrl       String
   extractedText String
   createdAt     DateTime    @default(now())
+  @@unique([institutionId, id])
 }
 
 model FeeStructure {
@@ -264,6 +271,7 @@ model FeeStructure {
   amount        Decimal     @db.Decimal(10, 2)
   frequency     String      // one-time, monthly, term
   createdAt     DateTime    @default(now())
+  @@unique([institutionId, id])
 }
 
 model Invoice {
@@ -286,6 +294,7 @@ model Invoice {
 
   @@unique([institutionId, invoiceNo])
   @@index([institutionId, status, dueDate])
+  @@unique([institutionId, id])
 }
 
 model Payment {
@@ -302,6 +311,7 @@ model Payment {
   createdBy     User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([institutionId, paidAt])
+  @@unique([institutionId, id])
 }
 
 model AttendanceSession {
@@ -318,6 +328,7 @@ model AttendanceSession {
   records       AttendanceRecord[]
 
   @@unique([institutionId, classId, sectionId, date])
+  @@unique([institutionId, id])
 }
 
 model AttendanceRecord {
@@ -333,6 +344,7 @@ model AttendanceRecord {
 
   @@unique([sessionId, studentId])
   @@index([institutionId, studentId])
+  @@unique([institutionId, id])
 }
 
 model MessageTemplate {
@@ -345,6 +357,7 @@ model MessageTemplate {
   createdAt     DateTime    @default(now())
 
   @@unique([institutionId, channel, name])
+  @@unique([institutionId, id])
 }
 
 model Notification {
@@ -361,6 +374,7 @@ model Notification {
   createdAt     DateTime    @default(now())
 
   @@index([institutionId, channel, status])
+  @@unique([institutionId, id])
 }
 
 model Subscription {
@@ -378,6 +392,7 @@ model Subscription {
   updatedAt      DateTime          @updatedAt
 
   @@index([institutionId, status])
+  @@unique([institutionId, id])
 }
 
 model AuditLog {
@@ -393,6 +408,7 @@ model AuditLog {
   createdAt     DateTime    @default(now())
 
   @@index([institutionId, action, createdAt])
+  @@unique([institutionId, id])
 }
 
 model AnalyticsEvent {
@@ -406,6 +422,7 @@ model AnalyticsEvent {
   createdAt     DateTime    @default(now())
 
   @@index([institutionId, eventName, createdAt])
+  @@unique([institutionId, id])
 }
 
 model Account {

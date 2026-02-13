@@ -13,50 +13,64 @@ const credentialsSchema = z.object({
   password: z.string().min(8),
 });
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+const providers = [
+  Credentials({
+    name: "Email and Password",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(rawCredentials) {
+      const parsed = credentialsSchema.safeParse(rawCredentials);
+      if (!parsed.success) {
+        return null;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email: parsed.data.email },
+      });
+
+      if (!user?.passwordHash) {
+        return null;
+      }
+
+      const isValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+      if (!isValid) {
+        return null;
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+        institutionId: user.institutionId,
+      };
+    },
+  }),
+];
+
+if (googleClientId && googleClientSecret) {
+  providers.push(
+    Google({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    }),
+  );
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  trustHost: true,
   pages: {
     signIn: "/auth/sign-in",
   },
-  providers: [
-    Google,
-    Credentials({
-      name: "Email and Password",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(rawCredentials) {
-        const parsed = credentialsSchema.safeParse(rawCredentials);
-        if (!parsed.success) {
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        });
-
-        if (!user?.passwordHash) {
-          return null;
-        }
-
-        const isValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
-        if (!isValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          institutionId: user.institutionId,
-        };
-      },
-    }),
-  ],
+  providers,
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

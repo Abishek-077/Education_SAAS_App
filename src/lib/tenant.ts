@@ -24,6 +24,27 @@ export function mergeTenantWhere<T extends Record<string, unknown> | undefined>(
   return { institutionId, ...(where ?? {}) };
 }
 
+export function enforceTenantUniqueWhere(
+  where: Record<string, unknown> | undefined,
+  institutionId: string,
+): Record<string, unknown> {
+  if (!where) {
+    return { institutionId };
+  }
+
+  const hasId = typeof where.id === "string";
+  if (hasId) {
+    return {
+      institutionId_id: {
+        institutionId,
+        id: where.id,
+      },
+    };
+  }
+
+  return mergeTenantWhere(where, institutionId);
+}
+
 function attachInstitutionToData<T>(data: T, institutionId: string): T {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return data;
@@ -51,11 +72,11 @@ export function withTenant(prisma: PrismaClient, institutionId: string, role: Ro
             return query(args);
           },
           async findUnique({ args, query }: any) {
-            args.where = mergeTenantWhere(args.where, institutionId);
+            args.where = enforceTenantUniqueWhere(args.where, institutionId);
             return query(args);
           },
           async update({ args, query }: any) {
-            args.where = mergeTenantWhere(args.where, institutionId);
+            args.where = enforceTenantUniqueWhere(args.where, institutionId);
             return query(args);
           },
           async updateMany({ args, query }: any) {
@@ -63,7 +84,7 @@ export function withTenant(prisma: PrismaClient, institutionId: string, role: Ro
             return query(args);
           },
           async delete({ args, query }: any) {
-            args.where = mergeTenantWhere(args.where, institutionId);
+            args.where = enforceTenantUniqueWhere(args.where, institutionId);
             return query(args);
           },
           async deleteMany({ args, query }: any) {
